@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1e8449">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>Kalorien</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#ddd;--accent:#1e8449;--good:#1e8449;--bad:#c0392b;--warn:#b9770e;--p:#2e86c1;--c:#d4ac0d;--f:#ca6f1e}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--card:#222;--text:#eee;--muted:#999;--line:#3a3a3a;--accent:#3fa968;--good:#58c47f;--bad:#e57368;--warn:#f0b35a;--p:#5dade2;--c:#f4d03f;--f:#eb984e}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);display:flex;z-index:5}
+header button{flex:1;padding:14px 0;border:0;background:none;color:var(--muted);font-size:14px;border-bottom:3px solid transparent}
+header button.on{color:var(--text);border-bottom-color:var(--accent)}
+main{max-width:700px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.tab{display:none}.tab.on{display:block}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+input,select,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;font-family:inherit}
+.row{display:grid;gap:8px;margin-bottom:10px}
+.c2{grid-template-columns:minmax(0,1fr) 95px}
+.c2d{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.c4{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.btn{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:15px;margin:0 4px 4px 0}
+.btn:disabled{opacity:.4}
+.main{background:var(--accent);border-color:var(--accent);color:#fff}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+.msg{font-size:13px;margin:6px 0;min-height:0}
+.msg.good{color:var(--good)}.msg.bad{color:var(--bad)}.msg.warn{color:var(--warn)}
+.out{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;text-align:center;font-size:12px;margin:4px 0 8px}
+.out div{background:var(--bg);border-radius:8px;padding:6px 0}
+.out b{display:block;font-size:15px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.seg button{flex:1;padding:9px;border:0;background:none;color:var(--text);font-size:15px}
+.seg button.on{background:var(--accent);color:#fff}
+.nav{display:flex;align-items:center;gap:6px}
+.nav span{flex:1;text-align:center;font-weight:600}
+.nav .btn{margin:0}
+.big{font-size:28px;font-weight:600}
+.big small{font-size:15px;font-weight:400}
+.bar{height:10px;background:var(--bg);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar.thin{height:7px;margin:3px 0 10px}
+.mac{display:flex;justify-content:space-between;font-size:13px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.it:last-child{border-bottom:0}
+.it .r{white-space:nowrap;text-align:right}
+.ic{border:0;background:none;color:var(--muted);font-size:17px;padding:4px 6px}
+.good{color:var(--good)}.bad{color:var(--bad)}
+h3{font-size:15px;margin:0 0 6px}
+small{color:var(--muted)}
+video{width:100%;max-height:260px;object-fit:cover;border-radius:8px;background:#000;margin-bottom:8px}
+.ch-grid{stroke:var(--line);stroke-width:1}
+.ch-line{fill:none;stroke:var(--accent);stroke-width:2}
+.ch-dot{fill:var(--accent)}
+.ch-txt{fill:var(--muted);font-size:10px;font-family:system-ui,sans-serif}
+</style>
+</head>
+<body>
+<header>
+  <button data-tab="today" class="on">Heute</button>
+  <button data-tab="foods">Lebensmittel</button>
+  <button data-tab="weight">Gewicht</button>
+  <button data-tab="goals">Ziele</button>
+</header>
+<main>
+
+<section id="today" class="tab on">
+  <div class="card">
+    <div class="nav">
+      <button class="btn" id="dPrev" aria-label="Vorheriger Tag">◀</button>
+      <span id="dLabel"></span>
+      <button class="btn" id="dNext" aria-label="Nächster Tag">▶</button>
+    </div>
+    <div style="text-align:center;margin-top:8px" id="dTodayWrap" hidden><button class="btn" id="dToday">Zu heute</button></div>
+  </div>
+  <div class="card" id="sum"></div>
+  <div class="card">
+    <div class="seg" id="segAdd">
+      <button data-m="list" class="on">Lebensmittel</button>
+      <button data-m="free">Direkt eintragen</button>
+    </div>
+    <div id="addList">
+      <button class="btn" id="bScan">📷 Barcode scannen</button>
+      <div id="scanBox" hidden>
+        <video id="vid" playsinline muted></video>
+        <div class="row c2">
+          <div><label>Barcode von Hand</label><input id="bcIn" inputmode="numeric"></div>
+          <div style="align-self:end"><button class="btn" id="bcGo" style="width:100%;margin:0">Suchen</button></div>
+        </div>
+        <button class="btn" id="scanStop">Schließen</button>
+      </div>
+      <p class="msg" id="scanMsg"></p>
+      <div class="row c2">
+        <div><label>Lebensmittel</label><input id="aFood" list="foodList" placeholder="Name eingeben" autocomplete="off"></div>
+        <div><label>Menge (g)</label><input id="aG" inputmode="decimal"></div>
+      </div>
+      <datalist id="foodList"></datalist>
+    </div>
+    <div id="addFree" hidden>
+      <div class="row"><div><label>Name</label><input id="qName" placeholder="Döner"></div></div>
+      <div class="row c4">
+        <div><label>kcal</label><input id="qK" inputmode="decimal"></div>
+        <div><label>Eiweiß g</label><input id="qP" inputmode="decimal"></div>
+        <div><label>KH g</label><input id="qC" inputmode="decimal"></div>
+        <div><label>Fett g</label><input id="qF" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div class="out" id="aOut"></div>
+    <div class="err" id="aErr"></div>
+    <button class="btn main" id="bAdd">Hinzufügen</button>
+  </div>
+  <div class="card"><h3>Einträge</h3><div id="dayList"></div></div>
+</section>
+
+<section id="foods" class="tab">
+  <div class="card">
+    <h3 id="fHead">Neues Lebensmittel</h3>
+    <p class="msg warn" id="fMsg"></p>
+    <div class="row"><div><label>Name</label><input id="fName" placeholder="Haferflocken"></div></div>
+    <div class="row"><div><label>Barcode (optional)</label><input id="fBc" inputmode="numeric"></div></div>
+    <label>Nährwerte pro 100 g</label>
+    <div class="row c4">
+      <div><label>kcal</label><input id="fK" inputmode="decimal"></div>
+      <div><label>Eiweiß g</label><input id="fP" inputmode="decimal"></div>
+      <div><label>KH g</label><input id="fC" inputmode="decimal"></div>
+      <div><label>Fett g</label><input id="fF" inputmode="decimal"></div>
+    </div>
+    <div class="err" id="fErr"></div>
+    <button class="btn main" id="fSave">Speichern</button>
+    <button class="btn" id="fCancel" hidden>Abbrechen</button>
+  </div>
+  <div class="card">
+    <input id="fSearch" placeholder="Suchen" style="margin-bottom:6px">
+    <div id="foodItems"></div>
+  </div>
+</section>
+
+<section id="weight" class="tab">
+  <div class="card">
+    <div class="row c2d">
+      <div><label>Datum</label><input id="wD" type="date"></div>
+      <div><label>Gewicht (kg)</label><input id="wKg" inputmode="decimal"></div>
+    </div>
+    <div class="err" id="wErr"></div>
+    <button class="btn main" id="wSave">Speichern</button>
+  </div>
+  <div class="card" id="wChart"></div>
+  <div class="card" id="wList"></div>
+</section>
+
+<section id="goals" class="tab">
+  <div class="card">
+    <h3>Tagesziele</h3>
+    <div class="row c4">
+      <div><label>kcal</label><input id="gK" inputmode="decimal"></div>
+      <div><label>Eiweiß g</label><input id="gP" inputmode="decimal"></div>
+      <div><label>KH g</label><input id="gC" inputmode="decimal"></div>
+      <div><label>Fett g</label><input id="gF" inputmode="decimal"></div>
+    </div>
+    <p><small id="gHint"></small></p>
+    <div class="err" id="gErr"></div>
+    <button class="btn main" id="gSave">Speichern</button>
+  </div>
+  <div class="card">
+    <button class="btn" id="bExport">Backup exportieren</button>
+    <button class="btn" id="bImport">Backup importieren</button>
+    <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    <p><small>Deine Daten liegen nur auf diesem Gerät. Exportiere ab und zu ein Backup.</small></p>
+  </div>
+</section>
+
+</main>
+<script>
+// ---------- Daten & Speicher ----------
+const KEY = "kalorien-v1";
+const def = () => ({ goals:{kcal:2200,p:140,c:250,f:70}, foods:[], log:{}, weights:[] });
+let data = load();
+function load(){ try { return Object.assign(def(), JSON.parse(localStorage.getItem(KEY)) || {}); } catch(e){ return def(); } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const num = s => { const v = parseFloat(String(s ?? "").replace(",", ".")); return isNaN(v) ? null : v; };
+const r1 = v => Math.round(v * 10) / 10;
+const fmt = (v, d = 0) => (+v).toLocaleString("de-DE", {maximumFractionDigits:d});
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+const todayIso = () => iso(new Date());
+const deDate = (s, opt = {day:"2-digit",month:"2-digit",year:"numeric"}) => new Date(s + "T12:00").toLocaleDateString("de-DE", opt);
+const MAC = [["p","Eiweiß","--p"],["c","Kohlenhydrate","--c"],["f","Fett","--f"]];
+
+// ---------- Tabs ----------
+function showTab(id){
+  document.querySelectorAll("header button, .tab").forEach(x => x.classList.remove("on"));
+  document.querySelector(`header button[data-tab="${id}"]`).classList.add("on"); $(id).classList.add("on");
+  if (id !== "today") stopScan();
+}
+document.querySelectorAll("header button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+// ---------- Diagramm ----------
+function chart(pts, dec = 1, unit = ""){
+  if (pts.length < 2) return `<small>Ab zwei Einträgen erscheint hier ein Diagramm.</small>`;
+  const W = 320, H = 170, L = 38, R = 10, T = 10, B = 22, ys = pts.map(p => p.y);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  if (lo === hi){ lo -= 1; hi += 1; }
+  const pad = (hi - lo) * .1; lo -= pad; hi += pad;
+  const x = i => L + i * (W - L - R) / (pts.length - 1), y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for (let k = 0; k <= 3; k++){
+    const v = lo + (hi - lo) * k / 3, yy = y(v);
+    s += `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text class="ch-txt" x="${L - 4}" y="${yy + 3}" text-anchor="end">${fmt(v, dec)}</text>`;
+  }
+  s += `<polyline class="ch-line" points="${pts.map((p,i) => x(i) + "," + y(p.y)).join(" ")}"/>`;
+  if (pts.length <= 40) s += pts.map((p,i) => `<circle class="ch-dot" cx="${x(i)}" cy="${y(p.y)}" r="3"/>`).join("");
+  s += `<text class="ch-txt" x="${L}" y="${H - 6}">${pts[0].l}</text><text class="ch-txt" x="${W - R}" y="${H - 6}" text-anchor="end">${pts[pts.length - 1].l}</text>`;
+  return s + `</svg>${unit ? `<small>${unit}</small>` : ""}`;
+}
+
+// ---------- Heute ----------
+let day = todayIso(), addMode = "list";
+function shiftDay(n){ const d = new Date(day + "T12:00"); d.setDate(d.getDate() + n); day = iso(d); renderDay(); }
+$("dPrev").onclick = () => shiftDay(-1);
+$("dNext").onclick = () => shiftDay(1);
+$("dToday").onclick = () => { day = todayIso(); renderDay(); };
+document.querySelectorAll("#segAdd button").forEach(b => b.onclick = () => setAddMode(b.dataset.m));
+function setAddMode(m){
+  addMode = m;
+  document.querySelectorAll("#segAdd button").forEach(x => x.classList.toggle("on", x.dataset.m === m));
+  $("addList").hidden = m !== "list"; $("addFree").hidden = m !== "free";
+  if (m !== "list") stopScan();
+  previewAdd();
+}
+const findFood = name => data.foods.find(f => f.name.toLowerCase() === name.trim().toLowerCase());
+const calc = (per, g) => ({ kcal:r1(per.kcal * g / 100), p:r1(per.p * g / 100), c:r1(per.c * g / 100), f:r1(per.f * g / 100) });
+function addValues(){
+  if (addMode === "list"){
+    const f = findFood($("aFood").value), g = num($("aG").value);
+    return f && g > 0 ? calc(f, g) : null;
+  }
+  const k = num($("qK").value);
+  return k === null ? null : { kcal:k, p:num($("qP").value) || 0, c:num($("qC").value) || 0, f:num($("qF").value) || 0 };
+}
+function previewAdd(){
+  const v = addValues(); $("aErr").textContent = "";
+  $("aOut").innerHTML = [["kcal","kcal",""],["p","Eiweiß"," g"],["c","KH"," g"],["f","Fett"," g"]]
+    .map(([k,l,u]) => `<div>${l}<b>${v ? fmt(v[k], k === "kcal" ? 0 : 1) + u : "–"}</b></div>`).join("");
+}
+["aFood","aG","qName","qK","qP","qC","qF"].forEach(id => $(id).addEventListener("input", previewAdd));
+
+$("bAdd").onclick = () => {
+  const err = $("aErr"); let e;
+  if (addMode === "list"){
+    const f = findFood($("aFood").value), g = num($("aG").value);
+    if (!f){ err.textContent = "Lebensmittel nicht gefunden. Unter „Lebensmittel“ anlegen, scannen oder direkt eintragen."; return; }
+    if (!(g > 0)){ err.textContent = "Menge in Gramm eingeben."; return; }
+    e = { id:newId(), name:f.name, g, per:{kcal:f.kcal,p:f.p,c:f.c,f:f.f}, ...calc(f, g) };
+  } else {
+    const name = $("qName").value.trim(), v = addValues();
+    if (!name){ err.textContent = "Name eingeben."; return; }
+    if (!v){ err.textContent = "Kalorien eingeben."; return; }
+    e = { id:newId(), name, g:null, ...v };
+  }
+  (data.log[day] = data.log[day] || []).push(e); save();
+  ["aFood","aG","qName","qK","qP","qC","qF"].forEach(id => $(id).value = "");
+  $("scanMsg").textContent = ""; previewAdd(); renderDay();
+};
+
+function renderDay(){
+  const t = todayIso();
+  $("dLabel").textContent = day === t ? "Heute, " + deDate(day, {day:"2-digit",month:"2-digit"}) : deDate(day, {weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
+  $("dTodayWrap").hidden = day === t;
+  const L = data.log[day] || [], G = data.goals;
+  const tot = L.reduce((a,e) => ({kcal:a.kcal + e.kcal, p:a.p + e.p, c:a.c + e.c, f:a.f + e.f}), {kcal:0,p:0,c:0,f:0});
+  const rest = G.kcal - tot.kcal, pct = v => Math.min(100, G.kcal ? v : 0);
+  $("sum").innerHTML =
+    `<div class="big">${fmt(tot.kcal)} <small>/ ${fmt(G.kcal)} kcal</small></div>
+     <div class="bar"><i style="width:${pct(tot.kcal / G.kcal * 100)}%;${rest < 0 ? "background:var(--bad)" : ""}"></i></div>
+     <p style="margin:4px 0 12px" class="${rest < 0 ? "bad" : ""}">${rest >= 0 ? `Noch <b>${fmt(rest)} kcal</b>` : `<b>${fmt(-rest)} kcal</b> über dem Ziel`}</p>` +
+    MAC.map(([k,l,col]) => `<div class="mac"><span>${l}</span><span>${fmt(tot[k],1)} / ${fmt(G[k])} g</span></div>
+      <div class="bar thin"><i style="width:${G[k] ? Math.min(100, tot[k] / G[k] * 100) : 0}%;background:var(${col})"></i></div>`).join("");
+  $("dayList").innerHTML = L.length ? L.map(e => `<div class="it">
+      <div>${esc(e.name)}<br><small>${e.g ? fmt(e.g,1) + " g · " : ""}E ${fmt(e.p,1)} · KH ${fmt(e.c,1)} · F ${fmt(e.f,1)}</small></div>
+      <div class="r"><b>${fmt(e.kcal)}</b> kcal${e.per ? `<button class="ic" data-eg="${e.id}" aria-label="Menge ändern">✎</button>` : ""}<button class="ic" data-ed="${e.id}" aria-label="Löschen">✕</button></div>
+    </div>`).join("") : `<small>Noch nichts eingetragen.</small>`;
+  $("dayList").querySelectorAll("[data-eg]").forEach(b => b.onclick = () => {
+    const e = L.find(x => x.id === b.dataset.eg), g = num(prompt(`Neue Menge für ${e.name} in g:`, fmt(e.g,1)));
+    if (g > 0){ Object.assign(e, {g}, calc(e.per, g)); save(); renderDay(); }
+  });
+  $("dayList").querySelectorAll("[data-ed]").forEach(b => b.onclick = () => {
+    const e = L.find(x => x.id === b.dataset.ed);
+    if (confirm(`${e.name} löschen?`)){ data.log[day] = L.filter(x => x !== e); if (!data.log[day].length) delete data.log[day]; save(); renderDay(); }
+  });
+}
+
+// ---------- Barcode ----------
+let stream = null, scanning = false, detector = null;
+const scanMsg = (t, cls = "") => { $("scanMsg").textContent = t; $("scanMsg").className = "msg " + cls; };
+$("bScan").onclick = async () => {
+  $("scanBox").hidden = false; scanMsg(""); $("bcIn").value = "";
+  if (!("BarcodeDetector" in window)){
+    $("vid").hidden = true; scanMsg("Kamera-Scan geht in diesem Browser nicht. Barcode von Hand eingeben.", "warn"); return;
+  }
+  try {
+    if (!detector){
+      try { detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]}); }
+      catch(_) { detector = new BarcodeDetector(); }
+    }
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    const v = $("vid"); v.hidden = false; v.srcObject = stream; await v.play();
+    scanning = true; scanLoop();
+  } catch(_) {
+    stopScan(false); $("vid").hidden = true;
+    scanMsg("Kamera nicht verfügbar. Zugriff erlauben oder Barcode von Hand eingeben.", "warn");
+  }
+};
+async function scanLoop(){
+  if (!scanning) return;
+  try {
+    const r = await detector.detect($("vid"));
+    if (r.length){ const code = r[0].rawValue; stopScan(); if (navigator.vibrate) navigator.vibrate(80); lookup(code); return; }
+  } catch(_) {}
+  setTimeout(scanLoop, 250);
+}
+function stopScan(hide = true){
+  scanning = false;
+  if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (hide) $("scanBox").hidden = true;
+}
+$("scanStop").onclick = () => stopScan();
+$("bcGo").onclick = () => { const c = $("bcIn").value; stopScan(); lookup(c); };
+$("bcIn").addEventListener("keydown", e => { if (e.key === "Enter") $("bcGo").click(); });
+
+function uniqueName(n){
+  let name = n, k = 2;
+  while (findFood(name)) name = `${n} (${k++})`;
+  return name;
+}
+function pickFood(f){
+  setAddMode("list"); $("aFood").value = f.name; previewAdd(); $("aG").focus();
+}
+async function lookup(raw){
+  const code = String(raw).replace(/\D/g, "");
+  if (!code){ scanMsg("Kein gültiger Barcode.", "bad"); return; }
+  const local = data.foods.find(f => f.bc === code);
+  if (local){ pickFood(local); scanMsg(`${local.name} aus deiner Liste. Menge eingeben.`, "good"); return; }
+  scanMsg(`Suche ${code} …`);
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_de,brands,nutriments`);
+    const j = await r.json(), p = j.product, n = p && p.nutriments;
+    let kcal = n ? n["energy-kcal_100g"] : null;
+    if (n && kcal == null && n["energy-kj_100g"] != null) kcal = n["energy-kj_100g"] / 4.184;
+    const pname = p ? (p.product_name_de || p.product_name || "").trim() : "";
+    if (j.status === 1 && kcal != null){
+      const brand = p.brands ? p.brands.split(",")[0].trim() : "";
+      const f = { id:newId(), name:uniqueName((pname || "Produkt " + code) + (brand && !pname.includes(brand) ? ` (${brand})` : "")), bc:code,
+                  kcal:r1(+kcal), p:r1(+n.proteins_100g || 0), c:r1(+n.carbohydrates_100g || 0), f:r1(+n.fat_100g || 0) };
+      data.foods.push(f); save(); fillFoodList(); renderFoods(); pickFood(f);
+      scanMsg(`Gefunden: ${f.name} (${fmt(f.kcal)} kcal/100 g). Unter Lebensmittel gespeichert, Menge eingeben.`, "good");
+    } else {
+      scanMsg("");
+      editFood(null, { name:pname, bc:code }, "Produkt nicht in der Datenbank oder ohne Nährwerte. Werte pro 100 g von der Packung eintragen.");
+    }
+  } catch(_) {
+    scanMsg("Keine Verbindung zur Datenbank. Später erneut scannen oder direkt eintragen.", "bad");
+  }
+}
+
+// ---------- Lebensmittel ----------
+let foodEdit = null, fromScan = false;
+function fillFoodList(){
+  $("foodList").innerHTML = data.foods.slice().sort((a,b) => a.name.localeCompare(b.name, "de")).map(f => `<option value="${esc(f.name)}">`).join("");
+}
+function editFood(id, pre, msg){
+  const f = id ? data.foods.find(x => x.id === id) : pre || {};
+  foodEdit = id; fromScan = !id && !!pre;
+  $("fName").value = f.name || ""; $("fBc").value = f.bc || "";
+  $("fK").value = f.kcal ?? ""; $("fP").value = f.p ?? ""; $("fC").value = f.c ?? ""; $("fF").value = f.f ?? "";
+  $("fHead").textContent = id ? "Lebensmittel bearbeiten" : "Neues Lebensmittel";
+  $("fMsg").textContent = msg || ""; $("fErr").textContent = "";
+  $("fCancel").hidden = !id && !pre;
+  showTab("foods"); window.scrollTo({top:0, behavior:"smooth"});
+  if (fromScan) (f.name ? $("fK") : $("fName")).focus();
+}
+function resetFood(){
+  foodEdit = null; fromScan = false;
+  ["fName","fBc","fK","fP","fC","fF"].forEach(id => $(id).value = "");
+  $("fHead").textContent = "Neues Lebensmittel"; $("fMsg").textContent = ""; $("fErr").textContent = ""; $("fCancel").hidden = true;
+}
+$("fCancel").onclick = () => { const back = fromScan; resetFood(); if (back) showTab("today"); };
+$("fSave").onclick = () => {
+  const err = $("fErr"), name = $("fName").value.trim(), bc = $("fBc").value.replace(/\D/g, ""), k = num($("fK").value);
+  if (!name){ err.textContent = "Name eingeben."; return; }
+  if (k === null){ err.textContent = "Kalorien pro 100 g eingeben."; return; }
+  const dup = findFood(name);
+  if (dup && dup.id !== foodEdit){ err.textContent = "Es gibt schon ein Lebensmittel mit diesem Namen."; return; }
+  if (bc && data.foods.some(f => f.bc === bc && f.id !== foodEdit)){ err.textContent = "Dieser Barcode gehört schon zu einem anderen Lebensmittel."; return; }
+  const f = { id:foodEdit || newId(), name, bc, kcal:k, p:num($("fP").value) || 0, c:num($("fC").value) || 0, f:num($("fF").value) || 0 };
+  if (foodEdit) data.foods[data.foods.findIndex(x => x.id === foodEdit)] = f; else data.foods.push(f);
+  save(); fillFoodList(); renderFoods();
+  const back = fromScan; resetFood();
+  if (back){ showTab("today"); pickFood(f); scanMsg(`${f.name} gespeichert. Menge eingeben.`, "good"); }
+};
+$("fSearch").addEventListener("input", renderFoods);
+function renderFoods(){
+  const q = $("fSearch").value.trim().toLowerCase();
+  const list = data.foods.filter(f => !q || f.name.toLowerCase().includes(q) || (f.bc || "").includes(q)).sort((a,b) => a.name.localeCompare(b.name, "de"));
+  $("foodItems").innerHTML = list.length ? list.map(f => `<div class="it">
+      <div>${esc(f.name)}<br><small>pro 100 g: ${fmt(f.kcal)} kcal · E ${fmt(f.p,1)} · KH ${fmt(f.c,1)} · F ${fmt(f.f,1)}${f.bc ? " · ▮" + f.bc : ""}</small></div>
+      <div class="r"><button class="ic" data-fe="${f.id}" aria-label="Bearbeiten">✎</button><button class="ic" data-fd="${f.id}" aria-label="Löschen">✕</button></div>
+    </div>`).join("") : `<small>${data.foods.length ? "Nichts gefunden." : "Noch keine Lebensmittel. Lege oben eins an oder scanne einen Barcode."}</small>`;
+  $("foodItems").querySelectorAll("[data-fe]").forEach(b => b.onclick = () => editFood(b.dataset.fe));
+  $("foodItems").querySelectorAll("[data-fd]").forEach(b => b.onclick = () => {
+    const f = data.foods.find(x => x.id === b.dataset.fd);
+    if (confirm(`${f.name} löschen? Bisherige Einträge bleiben erhalten.`)){ data.foods = data.foods.filter(x => x !== f); save(); fillFoodList(); renderFoods(); }
+  });
+}
+
+// ---------- Gewicht ----------
+$("wSave").onclick = () => {
+  const d = $("wD").value, kg = num($("wKg").value), err = $("wErr");
+  if (!d){ err.textContent = "Datum wählen."; return; }
+  if (!(kg > 20 && kg < 400)){ err.textContent = "Gewicht in kg eingeben."; return; }
+  err.textContent = "";
+  data.weights = data.weights.filter(w => w.d !== d); data.weights.push({d, kg});
+  data.weights.sort((a,b) => a.d.localeCompare(b.d)); save();
+  $("wKg").value = ""; renderWeight();
+};
+function renderWeight(){
+  const W = data.weights;
+  let head = "";
+  if (W.length >= 2){
+    const diff = W[W.length - 1].kg - W[0].kg;
+    head = `<p style="margin-top:0">Seit ${deDate(W[0].d)}: <b>${diff > 0 ? "+" : ""}${fmt(diff,1)} kg</b></p>`;
+  }
+  $("wChart").innerHTML = head + chart(W.slice(-90).map(w => ({l:deDate(w.d,{day:"2-digit",month:"2-digit"}), y:w.kg})), 1, "kg, letzte 90 Einträge");
+  $("wList").innerHTML = W.length ? W.slice().reverse().map(w => `<div class="it">
+      <span>${deDate(w.d, {weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"})}</span>
+      <span class="r"><b>${fmt(w.kg,1)} kg</b><button class="ic" data-wd="${w.d}" aria-label="Löschen">✕</button></span>
+    </div>`).join("") : `<small>Noch kein Gewicht eingetragen.</small>`;
+  $("wList").querySelectorAll("[data-wd]").forEach(b => b.onclick = () => {
+    if (confirm("Eintrag löschen?")){ data.weights = data.weights.filter(w => w.d !== b.dataset.wd); save(); renderWeight(); }
+  });
+}
+
+// ---------- Ziele ----------
+const GF = [["gK","kcal"],["gP","p"],["gC","c"],["gF","f"]];
+function fillGoals(){ GF.forEach(([id,k]) => $(id).value = data.goals[k]); goalHint(); }
+function goalHint(){
+  const p = num($("gP").value) || 0, c = num($("gC").value) || 0, f = num($("gF").value) || 0;
+  $("gHint").textContent = `Deine Makros ergeben ${fmt(p * 4 + c * 4 + f * 9)} kcal (Eiweiß und KH je 4 kcal/g, Fett 9 kcal/g).`;
+}
+GF.forEach(([id]) => $(id).addEventListener("input", goalHint));
+$("gSave").onclick = () => {
+  const g = {}; let ok = true;
+  GF.forEach(([id,k]) => { const v = num($(id).value); if (v === null || v < 0) ok = false; g[k] = v; });
+  if (!ok || !(g.kcal > 0)){ $("gErr").textContent = "Alle vier Werte eingeben."; return; }
+  $("gErr").textContent = ""; data.goals = g; save(); renderDay();
+  $("gSave").textContent = "Gespeichert ✓"; setTimeout(() => $("gSave").textContent = "Speichern", 1500);
+};
+
+// ---------- Backup ----------
+$("bExport").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}));
+  a.download = `kalorien-backup-${todayIso()}.json`; a.click();
+};
+$("bImport").onclick = () => $("fileIn").click();
+$("fileIn").onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  file.text().then(t => {
+    try {
+      const d = JSON.parse(t);
+      if (!Array.isArray(d.foods) || !Array.isArray(d.weights) || typeof d.log !== "object" || typeof d.goals !== "object") throw 0;
+      if (confirm("Aktuelle Daten durch dieses Backup ersetzen?")){ data = Object.assign(def(), d); save(); renderAll(); }
+    } catch(_) { alert("Diese Datei ist kein gültiges Backup."); }
+    e.target.value = "";
+  });
+};
+
+// ---------- Start ----------
+function renderAll(){ fillFoodList(); renderFoods(); renderDay(); renderWeight(); fillGoals(); previewAdd(); }
+$("wD").value = todayIso();
+renderAll();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>
